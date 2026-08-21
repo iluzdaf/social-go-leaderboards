@@ -37,7 +37,9 @@ SUPPORTED_GAME_TYPES = {"standard", "pair-go"}
 MARATHON_MIN_MOVES = 100
 FIRST_PENGUIN_MIN_DROP = 40.0
 FIRST_PENGUIN_POINTS = 20
+ICEBERG_MIN_DROP = 40.0
 ROLLERCOASTER_MIN_SWING = 20.0
+ROLLERCOASTER_MIN_SWINGS = 3
 EDITION_AWARDS = [
     {
         "key": "marathon",
@@ -626,6 +628,8 @@ def iceberg_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, 
     for game in games:
         for event in analysis_events_for_game(game, analysis_dir):
             drop = winrate_drop_points(event)
+            if drop < ICEBERG_MIN_DROP:
+                continue
             recipient = str(event.get("player", "")).strip()
             if not recipient:
                 continue
@@ -686,12 +690,12 @@ def rollercoaster_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict
     for game in games:
         swings = []
         for event in analysis_events_for_game(game, analysis_dir):
-            drop = winrate_drop_points(event)
-            if drop >= ROLLERCOASTER_MIN_SWING:
-                swings.append(drop)
-        if not swings:
-            continue
+            swing = winrate_swing_points(event)
+            if swing >= ROLLERCOASTER_MIN_SWING:
+                swings.append(swing)
         swing_count = len(swings)
+        if swing_count < ROLLERCOASTER_MIN_SWINGS:
+            continue
         swing_total = sum(swings)
         swing_label = "swing" if swing_count == 1 else "swings"
         candidates.append(
@@ -738,6 +742,12 @@ def winrate_drop_points(event: dict[str, Any]) -> float:
     before = normalize_winrate_value(event.get("winrate_before", 0))
     after = normalize_winrate_value(event.get("winrate_after", 0))
     return max(0.0, before - after)
+
+
+def winrate_swing_points(event: dict[str, Any]) -> float:
+    before = normalize_winrate_value(event.get("winrate_before", 0))
+    after = normalize_winrate_value(event.get("winrate_after", 0))
+    return abs(before - after)
 
 
 def normalize_winrate_value(value: Any) -> float:
@@ -1356,9 +1366,9 @@ def render_site(data: dict[str, Any]) -> str:
           <p>{award_rules_detail}</p>
           <ul class="rules-list">
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
-            {rules_item("🧊 Iceberg", "20 pts", "Biggest AI win-rate collapse.")}
+            {rules_item("🧊 Iceberg", "20 pts", f"Biggest AI win-rate collapse of at least {int(ICEBERG_MIN_DROP)} percentage points.")}
             {rules_item("🧘 Zen Master", "20 pts", "Lowest average AI win-rate loss.")}
-            {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate drops of at least {int(ROLLERCOASTER_MIN_SWING)} percentage points.")}
+            {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate swings, with at least {ROLLERCOASTER_MIN_SWINGS} swings of {int(ROLLERCOASTER_MIN_SWING)} percentage points or more.")}
           </ul>
         </div>
       </div>
