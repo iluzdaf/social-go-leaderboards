@@ -552,6 +552,7 @@ def edition_awards(games: list[dict[str, Any]], analysis_dir: Path = ANALYSIS_DI
     resolved_awards = {
         "marathon": marathon_award(games),
         "iceberg": iceberg_award(games, analysis_dir),
+        "zen_master": zen_master_award(games, analysis_dir),
     }
     for award in EDITION_AWARDS:
         resolved = resolved_awards.get(award["key"])
@@ -619,6 +620,40 @@ def iceberg_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, 
     if not candidates:
         return None
     winner = max(candidates, key=lambda candidate: candidate["sort_key"])
+    winner.pop("sort_key", None)
+    return winner
+
+
+def zen_master_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, Any] | None:
+    candidates = []
+    game_order = {game["game_id"]: index for index, game in enumerate(games)}
+    for game in games:
+        events = analysis_events_for_game(game, analysis_dir)
+        sides: dict[str, dict[str, float]] = {}
+        for event in events:
+            side = str(event.get("player", "")).strip()
+            if not side:
+                continue
+            row = sides.setdefault(side, {"loss_total": 0.0, "moves_analyzed": 0})
+            row["loss_total"] += winrate_drop_points(event)
+            row["moves_analyzed"] += 1
+        for side, row in sides.items():
+            if not row["moves_analyzed"]:
+                continue
+            average_loss = row["loss_total"] / row["moves_analyzed"]
+            candidates.append(
+                {
+                    "detail": f"{side} / {round(average_loss, 1)} avg loss",
+                    "recipients": award_recipients(side),
+                    "target_game_id": game["game_id"],
+                    "average_loss": round(average_loss, 1),
+                    "moves_analyzed": row["moves_analyzed"],
+                    "sort_key": (average_loss, -row["moves_analyzed"], game_order[game["game_id"]], side.lower()),
+                }
+            )
+    if not candidates:
+        return None
+    winner = min(candidates, key=lambda candidate: candidate["sort_key"])
     winner.pop("sort_key", None)
     return winner
 
@@ -1206,7 +1241,7 @@ def render_site(data: dict[str, Any]) -> str:
           <p>These may change until the edition is finalized.</p>
           <ul class="rules-list">
             {rules_item("🧊 Iceberg", "20 pts", "Biggest AI win-rate collapse.")}
-            {rules_item("🧘 Zen Master", "20 pts", "Most accurate game.")}
+            {rules_item("🧘 Zen Master", "20 pts", "Lowest average AI win-rate loss.")}
             {rules_item("🎢 Rollercoaster", "20 pts", "Most AI win-rate swings.")}
             {rules_item("📸 Photo Finish", "20 pts", "Closest game.")}
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
