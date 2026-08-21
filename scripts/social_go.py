@@ -1510,7 +1510,7 @@ def render_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
       </div>
       <div class="breakdown-group">
         <div class="breakdown-group-title">{awards_title}</div>
-        {breakdown_section("Awards", awards, row["award_points"], provisional=edition_status != "final" and row["award_points"] > 0)}
+        {breakdown_section("Awards", awards, row["award_points"], provisional=edition_status != "final")}
       </div>
     </div>
   </div>
