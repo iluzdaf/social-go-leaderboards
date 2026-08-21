@@ -1,0 +1,55 @@
+{
+  "edition_awards": [
+    {
+      "detail": "Pending: no game has reached 100 moves",
+      "name": "Marathon",
+      "points": 10,
+      "recipients": [],
+      "source": "sgf",
+      "status": "pending",
+      "target_game_id": ""
+    },
+    {
+      "detail": "Pending KataGo analysis",
+      "name": "Iceberg",
+      "points": 20,
+      "recipients": [],
+      "source": "katago",
+      "status": "pending",
+      "target_game_id": ""
+    },
+    {
+      "detail": "Pending KataGo analysis",
+      "name": "Zen Master",
+      "points": 20,
+      "recipients": [],
+      "source": "katago",
+      "status": "pending",
+      "target_game_id": ""
+    },
+    {
+      "detail": "Pending KataGo analysis",
+      "name": "Rollercoaster",
+      "points": 20,
+      "recipients": [],
+      "source": "katago",
+      "status": "pending",
+      "target_game_id": ""
+    },
+    {
+      "detail": "Pending KataGo analysis",
+      "name": "Photo Finish",
+      "points": 20,
+      "recipients": [],
+      "source": "katago",
+      "status": "pending",
+      "target_game_id": ""
+    }
+  ],
+  "edition_status": "in_progress",
+  "games": [],
+  "games_count": 0,
+  "generated_on": "2026-08-21",
+  "leaderboard": [],
+  "players_count": 0
+}
