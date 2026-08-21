@@ -497,12 +497,14 @@ def build_leaderboard_data(games: list[dict[str, Any]], analysis_dir: Path = ANA
         row["achievement_points"] += FIRST_PENGUIN_POINTS
         row["achievements"].append("🐧 First Penguin")
 
-    marathon = marathon_award(games)
-    if marathon:
-        for name in marathon["recipients"]:
+    edition_award_rows = edition_awards(games, analysis_dir)
+    for award in edition_award_rows:
+        if award["status"] != "current":
+            continue
+        for name in award["recipients"]:
             row = player_row(name)
-            row["award_points"] += 10
-            row["awards"].append("🏃 Marathon")
+            row["award_points"] += award["points"]
+            row["awards"].append(award["name"])
 
     rows = []
     for row in players.values():
@@ -540,16 +542,19 @@ def build_leaderboard_data(games: list[dict[str, Any]], analysis_dir: Path = ANA
         "players_count": len(rows),
         "leaderboard": rows,
         "games": games,
-        "edition_awards": edition_awards(games),
+        "edition_awards": edition_award_rows,
         "first_penguin": first_penguin,
     }
 
 
-def edition_awards(games: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def edition_awards(games: list[dict[str, Any]], analysis_dir: Path = ANALYSIS_DIR) -> list[dict[str, Any]]:
     awards = []
-    marathon = marathon_award(games)
+    resolved_awards = {
+        "marathon": marathon_award(games),
+        "iceberg": iceberg_award(games, analysis_dir),
+    }
     for award in EDITION_AWARDS:
-        resolved = marathon if award["key"] == "marathon" else None
+        resolved = resolved_awards.get(award["key"])
         awards.append(
             {
                 "name": award["name"],
@@ -590,6 +595,37 @@ def first_penguin_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict
     winner = min(candidates, key=lambda candidate: candidate["sort_key"])
     winner.pop("sort_key", None)
     return winner
+
+
+def iceberg_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, Any] | None:
+    candidates = []
+    game_order = {game["game_id"]: index for index, game in enumerate(games)}
+    for game in games:
+        for event in analysis_events_for_game(game, analysis_dir):
+            drop = winrate_drop_points(event)
+            recipient = str(event.get("player", "")).strip()
+            if not recipient:
+                continue
+            candidates.append(
+                {
+                    "detail": f"{game['black']} vs {game['white']} / {round(drop, 1)} point drop",
+                    "recipients": award_recipients(recipient),
+                    "target_game_id": game["game_id"],
+                    "move_number": int(event.get("move_number", 0) or 0),
+                    "winrate_drop": round(drop, 1),
+                    "sort_key": (drop, -game_order[game["game_id"]], -int(event.get("move_number", 0) or 0)),
+                }
+            )
+    if not candidates:
+        return None
+    winner = max(candidates, key=lambda candidate: candidate["sort_key"])
+    winner.pop("sort_key", None)
+    return winner
+
+
+def award_recipients(player_or_side: str) -> list[str]:
+    recipients = [part.strip() for part in player_or_side.split("/") if part.strip()]
+    return recipients or [player_or_side]
 
 
 def analysis_events_for_game(game: dict[str, Any], analysis_dir: Path) -> list[dict[str, Any]]:

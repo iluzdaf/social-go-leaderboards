@@ -115,11 +115,11 @@ Provisional awards may change until the edition is finalized.
 - 📸 Photo Finish Award: 20 points for the closest game
 - 🏃 Marathon Award: 10 points for the longest game processed so far, minimum 100 moves
 
-Awards that need analysis currently appear as pending until their metrics are supported. First Penguin can be calculated from saved analysis events.
+Awards that need analysis appear as pending until their metrics are supported. First Penguin and Iceberg can be calculated from saved analysis events.
 
 ## Analysis Data
 
-First Penguin is calculated from saved analysis files. The `analyze-katago` command starts KataGo once, asks it to analyze every turn in each SGF, then records each player's win-rate loss after their own moves.
+First Penguin and Iceberg are calculated from saved analysis files. The `analyze-katago` command starts KataGo once, asks it to analyze every turn in each SGF, then records each player's win-rate loss after their own moves.
 
 ```text
 analysis/
@@ -154,7 +154,7 @@ The generated shape is:
 }
 ```
 
-First Penguin is awarded to the earliest player whose win rate drops by at least 40 percentage points in one move.
+First Penguin is awarded to the earliest player whose win rate drops by at least 40 percentage points in one move. Iceberg is awarded to the player with the biggest single-move win-rate drop across all analyzed games.
 
 ## Optional Game Metadata
 
