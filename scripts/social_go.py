@@ -8,6 +8,7 @@ import html
 import json
 import re
 import shutil
+import subprocess
 from dataclasses import dataclass, asdict
 from datetime import date
 from pathlib import Path
@@ -22,13 +23,19 @@ GAMES_JSON = DATA_DIR / "games.json"
 LEADERBOARD_JSON = DATA_DIR / "leaderboard.json"
 METADATA_CSV = DATA_DIR / "game_metadata.csv"
 SETTINGS_JSON = DATA_DIR / "settings.json"
+ANALYSIS_DIR = ROOT / "analysis"
 FIXTURES_DIR = ROOT / "fixtures"
 SYNTHETIC_GAMES_DIR = FIXTURES_DIR / "synthetic-games"
+SYNTHETIC_ANALYSIS_DIR = FIXTURES_DIR / "synthetic-analysis"
 SYNTHETIC_METADATA_CSV = FIXTURES_DIR / "synthetic-game_metadata.csv"
+DEFAULT_KATAGO_CONFIG = Path("/opt/homebrew/Cellar/katago/1.16.4/share/katago/configs/analysis_example.cfg")
+DEFAULT_KATAGO_MODEL = Path("/opt/homebrew/Cellar/katago/1.16.4/share/katago/g170e-b20c256x2-s5303129600-d1228401921.bin.gz")
 
 SUPPORTED_BOARD_SIZES = {9, 13, 19}
 SUPPORTED_GAME_TYPES = {"standard", "pair-go"}
 MARATHON_MIN_MOVES = 100
+FIRST_PENGUIN_MIN_DROP = 40.0
+FIRST_PENGUIN_POINTS = 20
 EDITION_AWARDS = [
     {
         "key": "marathon",
@@ -42,28 +49,28 @@ EDITION_AWARDS = [
         "name": "🧊 Iceberg",
         "points": 20,
         "source": "katago",
-        "pending": "Pending KataGo analysis",
+        "pending": "Pending analysis",
     },
     {
         "key": "zen_master",
         "name": "🧘 Zen Master",
         "points": 20,
         "source": "katago",
-        "pending": "Pending KataGo analysis",
+        "pending": "Pending analysis",
     },
     {
         "key": "rollercoaster",
         "name": "🎢 Rollercoaster",
         "points": 20,
         "source": "katago",
-        "pending": "Pending KataGo analysis",
+        "pending": "Pending analysis",
     },
     {
         "key": "photo_finish",
         "name": "📸 Photo Finish",
         "points": 20,
         "source": "katago",
-        "pending": "Pending KataGo analysis",
+        "pending": "Pending analysis",
     },
 ]
 
@@ -173,6 +180,29 @@ def parse_sgf(path: Path, session_date: str, session_label: str, metadata: dict[
     )
 
 
+def parse_sgf_moves(path: Path, board_size: int) -> list[dict[str, str]]:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    moves = []
+    for match in re.finditer(r";([BW])\[([a-zA-Z]{0,2})\]", text):
+        color = match.group(1)
+        sgf_point = match.group(2).lower()
+        moves.append({"color": color, "point": sgf_point_to_gtp(sgf_point, board_size)})
+    return moves
+
+
+def sgf_point_to_gtp(point: str, board_size: int) -> str:
+    if point == "" or point.lower() == "tt":
+        return "pass"
+    if len(point) != 2:
+        raise ValueError(f"Unsupported SGF point: {point}")
+    x = ord(point[0]) - ord("a")
+    y = ord(point[1]) - ord("a")
+    if x < 0 or y < 0 or x >= board_size or y >= board_size:
+        raise ValueError(f"SGF point {point} is outside a {board_size}x{board_size} board")
+    columns = "ABCDEFGHJKLMNOPQRST"
+    return f"{columns[x]}{board_size - y}"
+
+
 def process_session(args: argparse.Namespace) -> None:
     session_dir = Path(args.session_dir)
     if not session_dir.is_absolute():
@@ -208,6 +238,211 @@ def process_session(args: argparse.Namespace) -> None:
     print(f"Saved {GAMES_JSON.relative_to(ROOT)} and {LEADERBOARD_JSON.relative_to(ROOT)}.")
 
 
+def analyze_session_with_katago(args: argparse.Namespace) -> None:
+    session_dir = Path(args.session_dir)
+    if not session_dir.is_absolute():
+        session_dir = ROOT / session_dir
+    if not session_dir.exists():
+        raise SystemExit(f"Session folder does not exist: {session_dir}")
+    metadata = load_metadata(resolve_path(args.metadata))
+    games = [
+        asdict(parse_sgf(sgf_path, args.date or session_dir.name, args.label or session_dir.name, metadata))
+        for sgf_path in sorted(session_dir.glob("*.sgf"))
+    ]
+    analyze_games_with_katago(games, resolve_path(args.analysis_dir), args)
+
+
+def analyze_sample_with_katago(args: argparse.Namespace) -> None:
+    games = load_synthetic_games()
+    analyze_games_with_katago(games, SYNTHETIC_ANALYSIS_DIR, args)
+
+
+def analyze_games_with_katago(games: list[dict[str, Any]], analysis_dir: Path, args: argparse.Namespace) -> None:
+    katago = resolve_executable(args.katago)
+    config = resolve_path(args.config)
+    model = resolve_path(args.model)
+    if not config.exists():
+        raise SystemExit(f"KataGo config does not exist: {config}")
+    if not model.exists():
+        raise SystemExit(f"KataGo model does not exist: {model}")
+    if not games:
+        print("No SGF files found.")
+        return
+
+    engine = KataGoAnalysisEngine(katago, config, model, args.visits)
+    analyzed = 0
+    try:
+        for game in games:
+            output_path = analysis_dir / f"{Path(game['filename']).stem}.json"
+            analysis = analyze_game_with_engine(game, engine, args.rules)
+            write_json(output_path, analysis)
+            analyzed += 1
+            summary = analysis.get("summary", {}).get("biggest_winrate_loss")
+            if summary:
+                print(
+                    f"Analyzed {game['filename']}: biggest drop "
+                    f"{summary['player']} move {summary['move_number']} "
+                    f"({summary['winrate_drop']} pts)."
+                )
+            else:
+                print(f"Analyzed {game['filename']}: no drops found.")
+    finally:
+        engine.close()
+    print(f"Saved KataGo analysis for {analyzed} game(s) in {analysis_dir.relative_to(ROOT)}.")
+
+
+class KataGoAnalysisEngine:
+    def __init__(self, katago: str, config: Path, model: Path, visits: int):
+        self.visits = visits
+        overrides = ",".join(
+            [
+                f"maxVisits={visits}",
+                "numAnalysisThreads=1",
+                "numSearchThreadsPerAnalysisThread=1",
+                "logToStderr=false",
+                "reportAnalysisWinratesAs=BLACK",
+            ]
+        )
+        self.proc = subprocess.Popen(
+            [
+                katago,
+                "analysis",
+                "-config",
+                str(config),
+                "-model",
+                str(model),
+                "-override-config",
+                overrides,
+                "-quit-without-waiting",
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+            cwd=ROOT,
+        )
+
+    def query(self, request: dict[str, Any], expected_responses: int) -> list[dict[str, Any]]:
+        if not self.proc.stdin or not self.proc.stdout:
+            raise RuntimeError("KataGo process is not available")
+        self.proc.stdin.write(json.dumps(request) + "\n")
+        self.proc.stdin.flush()
+        responses = []
+        while len(responses) < expected_responses:
+            line = self.proc.stdout.readline()
+            if line == "":
+                raise RuntimeError("KataGo exited before returning all analysis responses")
+            response = json.loads(line)
+            if response.get("id") != request["id"]:
+                continue
+            if "error" in response:
+                raise RuntimeError(f"KataGo analysis error: {response['error']}")
+            if "warning" in response:
+                print(f"KataGo warning for {request['id']}: {response['warning']}")
+                continue
+            if response.get("isDuringSearch"):
+                continue
+            responses.append(response)
+        return responses
+
+    def close(self) -> None:
+        if self.proc.stdin:
+            self.proc.stdin.close()
+        self.proc.terminate()
+        try:
+            self.proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+
+
+def analyze_game_with_engine(game: dict[str, Any], engine: KataGoAnalysisEngine, rules: str) -> dict[str, Any]:
+    moves = parse_sgf_moves(ROOT / game["path"], game["board_size"])
+    analyze_turns = list(range(len(moves) + 1))
+    request = {
+        "id": game["game_id"],
+        "moves": [[move["color"], move["point"]] for move in moves],
+        "rules": rules,
+        "komi": game["komi"] if game["komi"] is not None else 6.5,
+        "boardXSize": game["board_size"],
+        "boardYSize": game["board_size"],
+        "analyzeTurns": analyze_turns,
+    }
+    responses = engine.query(request, len(analyze_turns))
+    winrates_by_turn = {
+        int(response["turnNumber"]): float(response.get("rootInfo", {}).get("winrate", 0.0))
+        for response in responses
+    }
+    events = winrate_drop_events(game, moves, winrates_by_turn)
+    biggest_loss = max(events, key=lambda event: event["winrate_drop"], default=None)
+    return {
+        "game_id": game["game_id"],
+        "filename": game["filename"],
+        "generated_by": "katago",
+        "katago": {
+            "visits": engine_visits(engine),
+            "winrate_perspective": "black",
+        },
+        "summary": {
+            "biggest_winrate_loss": biggest_loss,
+        },
+        "events": events,
+    }
+
+
+def engine_visits(engine: KataGoAnalysisEngine) -> int:
+    return engine.visits
+
+
+def winrate_drop_events(
+    game: dict[str, Any],
+    moves: list[dict[str, str]],
+    winrates_by_turn: dict[int, float],
+) -> list[dict[str, Any]]:
+    events = []
+    for turn, move in enumerate(moves, start=1):
+        if turn - 1 not in winrates_by_turn or turn not in winrates_by_turn:
+            continue
+        color = move["color"]
+        before = player_winrate(color, winrates_by_turn[turn - 1])
+        after = player_winrate(color, winrates_by_turn[turn])
+        drop = max(0.0, before - after)
+        events.append(
+            {
+                "move_number": turn,
+                "color": color,
+                "player": side_name_for_color(game, color),
+                "move": move["point"],
+                "winrate_before": round(before * 100, 1),
+                "winrate_after": round(after * 100, 1),
+                "winrate_drop": round(drop * 100, 1),
+            }
+        )
+    return sorted(events, key=lambda event: event["winrate_drop"], reverse=True)
+
+
+def player_winrate(color: str, black_winrate: float) -> float:
+    return black_winrate if color == "B" else 1.0 - black_winrate
+
+
+def side_name_for_color(game: dict[str, Any], color: str) -> str:
+    return game["black"] if color == "B" else game["white"]
+
+
+def resolve_path(value: str | Path) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else ROOT / path
+
+
+def resolve_executable(value: str) -> str:
+    if "/" in value:
+        return value
+    resolved = shutil.which(value)
+    if not resolved:
+        raise SystemExit(f"Could not find executable: {value}")
+    return resolved
+
+
 def game_players(game: dict[str, Any]) -> list[str]:
     players = []
     for side in (game["black"], game["white"]):
@@ -215,7 +450,7 @@ def game_players(game: dict[str, Any]) -> list[str]:
     return players
 
 
-def build_leaderboard_data(games: list[dict[str, Any]]) -> dict[str, Any]:
+def build_leaderboard_data(games: list[dict[str, Any]], analysis_dir: Path = ANALYSIS_DIR) -> dict[str, Any]:
     players: dict[str, dict[str, Any]] = {}
 
     def player_row(name: str) -> dict[str, Any]:
@@ -255,6 +490,12 @@ def build_leaderboard_data(games: list[dict[str, Any]]) -> dict[str, Any]:
         if SUPPORTED_GAME_TYPES.issubset(row["game_types"]):
             row["achievement_points"] += 30
             row["achievements"].append("🗺️ Go Explorer")
+
+    first_penguin = first_penguin_award(games, analysis_dir)
+    if first_penguin:
+        row = player_row(first_penguin["recipient"])
+        row["achievement_points"] += FIRST_PENGUIN_POINTS
+        row["achievements"].append("🐧 First Penguin")
 
     marathon = marathon_award(games)
     if marathon:
@@ -300,6 +541,7 @@ def build_leaderboard_data(games: list[dict[str, Any]]) -> dict[str, Any]:
         "leaderboard": rows,
         "games": games,
         "edition_awards": edition_awards(games),
+        "first_penguin": first_penguin,
     }
 
 
@@ -320,6 +562,70 @@ def edition_awards(games: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         )
     return awards
+
+
+def first_penguin_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, Any] | None:
+    candidates = []
+    game_order = {game["game_id"]: index for index, game in enumerate(games)}
+    for game in games:
+        for event in analysis_events_for_game(game, analysis_dir):
+            drop = winrate_drop_points(event)
+            if drop < FIRST_PENGUIN_MIN_DROP:
+                continue
+            recipient = str(event.get("player", "")).strip()
+            if not recipient:
+                continue
+            candidates.append(
+                {
+                    "recipient": recipient,
+                    "game_id": game["game_id"],
+                    "game_label": f"{game['black']} vs {game['white']}",
+                    "move_number": int(event.get("move_number", 0) or 0),
+                    "winrate_drop": round(drop, 1),
+                    "sort_key": (game["session_date"], game_order[game["game_id"]], int(event.get("move_number", 0) or 0)),
+                }
+            )
+    if not candidates:
+        return None
+    winner = min(candidates, key=lambda candidate: candidate["sort_key"])
+    winner.pop("sort_key", None)
+    return winner
+
+
+def analysis_events_for_game(game: dict[str, Any], analysis_dir: Path) -> list[dict[str, Any]]:
+    for analysis_path in analysis_paths_for_game(game, analysis_dir):
+        data = load_json(analysis_path, {})
+        if isinstance(data, dict) and isinstance(data.get("events"), list):
+            return [event for event in data["events"] if isinstance(event, dict)]
+    return []
+
+
+def analysis_paths_for_game(game: dict[str, Any], analysis_dir: Path) -> list[Path]:
+    filename_stem = Path(game["filename"]).stem
+    return [
+        analysis_dir / f"{game['game_id']}.json",
+        analysis_dir / f"{filename_stem}.json",
+    ]
+
+
+def winrate_drop_points(event: dict[str, Any]) -> float:
+    if "winrate_drop" in event:
+        return parse_numeric(event["winrate_drop"])
+    before = normalize_winrate_value(event.get("winrate_before", 0))
+    after = normalize_winrate_value(event.get("winrate_after", 0))
+    return max(0.0, before - after)
+
+
+def normalize_winrate_value(value: Any) -> float:
+    numeric = parse_numeric(value)
+    return numeric * 100 if 0 <= numeric <= 1 else numeric
+
+
+def parse_numeric(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def marathon_award(games: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -343,7 +649,7 @@ def build_site(_: argparse.Namespace) -> None:
 
 def build_sample_site(_: argparse.Namespace) -> None:
     games = load_synthetic_games()
-    data = build_leaderboard_data(games)
+    data = build_leaderboard_data(games, SYNTHETIC_ANALYSIS_DIR)
     write_site(data)
 
 
@@ -590,6 +896,17 @@ def render_site(data: dict[str, Any]) -> str:
     .points-operator {{
       color: var(--muted);
       font-weight: 700;
+    }}
+    .points-badge {{
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #e7f2eb;
+      border: 1px solid rgba(31, 122, 93, .22);
+      font-size: .9rem;
+      line-height: 1;
     }}
     .points-heading {{
       text-align: center;
@@ -961,15 +1278,22 @@ def render_leader_row(rank: int, row: dict[str, Any], edition_status: str) -> st
 def render_score(row: dict[str, Any]) -> str:
     provisional = row["award_points"]
     confirmed = row["total_points"] - provisional
+    first_penguin_badge = render_first_penguin_badge(row)
     if provisional == 0:
-        return f"""<span class="points">{row["total_points"]}</span>"""
+        return f"""<span class="points">{row["total_points"]}</span>{first_penguin_badge}"""
     return f"""<span class="points points-formula">
   <span class="points-confirmed">{confirmed}</span>
   <span class="points-operator">+</span>
   <span class="points-provisional">{provisional}</span>
   <span class="points-operator">=</span>
   <span class="points-total">{row["total_points"]}</span>
-</span>"""
+</span>{first_penguin_badge}"""
+
+
+def render_first_penguin_badge(row: dict[str, Any]) -> str:
+    if "🐧 First Penguin" not in row["achievements"]:
+        return ""
+    return """<span class="points-badge" title="First Penguin" aria-label="First Penguin">🐧</span>"""
 
 
 def rules_item(title: str, points: str, detail: str) -> str:
@@ -1091,6 +1415,27 @@ def main() -> None:
 
     sample = subparsers.add_parser("build-sample-site", help="Build the static website with synthetic fixture data")
     sample.set_defaults(func=build_sample_site)
+
+    analyze = subparsers.add_parser("analyze-katago", help="Analyze a folder of SGF files with KataGo")
+    analyze.add_argument("session_dir", help="Folder containing SGF files")
+    analyze.add_argument("--date", help="Session date, for example 2026-08-27")
+    analyze.add_argument("--label", help="Display label, for example '27 Aug'")
+    analyze.add_argument("--analysis-dir", default=str(ANALYSIS_DIR.relative_to(ROOT)), help="Folder for analysis JSON files")
+    analyze.add_argument("--metadata", default=str(METADATA_CSV.relative_to(ROOT)), help="CSV file with game metadata")
+    analyze.add_argument("--katago", default="katago", help="KataGo executable")
+    analyze.add_argument("--config", default=str(DEFAULT_KATAGO_CONFIG), help="KataGo analysis config")
+    analyze.add_argument("--model", default=str(DEFAULT_KATAGO_MODEL), help="KataGo model file")
+    analyze.add_argument("--visits", type=int, default=16, help="KataGo visits per analyzed position")
+    analyze.add_argument("--rules", default="Chinese", help="Rules to use for analysis")
+    analyze.set_defaults(func=analyze_session_with_katago)
+
+    sample_analysis = subparsers.add_parser("analyze-sample-katago", help="Analyze synthetic fixture games with KataGo")
+    sample_analysis.add_argument("--katago", default="katago", help="KataGo executable")
+    sample_analysis.add_argument("--config", default=str(DEFAULT_KATAGO_CONFIG), help="KataGo analysis config")
+    sample_analysis.add_argument("--model", default=str(DEFAULT_KATAGO_MODEL), help="KataGo model file")
+    sample_analysis.add_argument("--visits", type=int, default=16, help="KataGo visits per analyzed position")
+    sample_analysis.add_argument("--rules", default="Chinese", help="Rules to use for analysis")
+    sample_analysis.set_defaults(func=analyze_sample_with_katago)
 
     args = parser.parse_args()
     args.func(args)

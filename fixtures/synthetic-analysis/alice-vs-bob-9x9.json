@@ -1,0 +1,346 @@
+{
+  "events": [
+    {
+      "color": "B",
+      "move": "G7",
+      "move_number": 5,
+      "player": "Alice",
+      "winrate_after": 48.9,
+      "winrate_before": 84.0,
+      "winrate_drop": 35.0
+    },
+    {
+      "color": "W",
+      "move": "F5",
+      "move_number": 6,
+      "player": "Bob",
+      "winrate_after": 20.1,
+      "winrate_before": 51.1,
+      "winrate_drop": 30.9
+    },
+    {
+      "color": "W",
+      "move": "D5",
+      "move_number": 8,
+      "player": "Bob",
+      "winrate_after": 0.5,
+      "winrate_before": 20.3,
+      "winrate_drop": 19.8
+    },
+    {
+      "color": "W",
+      "move": "C4",
+      "move_number": 2,
+      "player": "Bob",
+      "winrate_after": 15.1,
+      "winrate_before": 30.2,
+      "winrate_drop": 15.1
+    },
+    {
+      "color": "B",
+      "move": "F6",
+      "move_number": 3,
+      "player": "Alice",
+      "winrate_after": 70.2,
+      "winrate_before": 84.9,
+      "winrate_drop": 14.7
+    },
+    {
+      "color": "W",
+      "move": "C7",
+      "move_number": 4,
+      "player": "Bob",
+      "winrate_after": 16.0,
+      "winrate_before": 29.8,
+      "winrate_drop": 13.8
+    },
+    {
+      "color": "B",
+      "move": "H2",
+      "move_number": 35,
+      "player": "Alice",
+      "winrate_after": 95.8,
+      "winrate_before": 99.6,
+      "winrate_drop": 3.9
+    },
+    {
+      "color": "W",
+      "move": "H3",
+      "move_number": 36,
+      "player": "Bob",
+      "winrate_after": 0.3,
+      "winrate_before": 4.2,
+      "winrate_drop": 3.9
+    },
+    {
+      "color": "W",
+      "move": "D7",
+      "move_number": 10,
+      "player": "Bob",
+      "winrate_after": 0.4,
+      "winrate_before": 4.1,
+      "winrate_drop": 3.7
+    },
+    {
+      "color": "B",
+      "move": "E6",
+      "move_number": 9,
+      "player": "Alice",
+      "winrate_after": 95.9,
+      "winrate_before": 99.5,
+      "winrate_drop": 3.5
+    },
+    {
+      "color": "B",
+      "move": "D6",
+      "move_number": 1,
+      "player": "Alice",
+      "winrate_after": 69.8,
+      "winrate_before": 70.7,
+      "winrate_drop": 0.8
+    },
+    {
+      "color": "B",
+      "move": "F1",
+      "move_number": 33,
+      "player": "Alice",
+      "winrate_after": 98.9,
+      "winrate_before": 99.7,
+      "winrate_drop": 0.8
+    },
+    {
+      "color": "W",
+      "move": "G1",
+      "move_number": 34,
+      "player": "Bob",
+      "winrate_after": 0.4,
+      "winrate_before": 1.1,
+      "winrate_drop": 0.7
+    },
+    {
+      "color": "W",
+      "move": "B3",
+      "move_number": 26,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.7,
+      "winrate_drop": 0.6
+    },
+    {
+      "color": "B",
+      "move": "C2",
+      "move_number": 25,
+      "player": "Alice",
+      "winrate_after": 99.3,
+      "winrate_before": 99.8,
+      "winrate_drop": 0.5
+    },
+    {
+      "color": "B",
+      "move": "D1",
+      "move_number": 31,
+      "player": "Alice",
+      "winrate_after": 99.6,
+      "winrate_before": 99.8,
+      "winrate_drop": 0.3
+    },
+    {
+      "color": "B",
+      "move": "E5",
+      "move_number": 7,
+      "player": "Alice",
+      "winrate_after": 79.7,
+      "winrate_before": 79.9,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "W",
+      "move": "C5",
+      "move_number": 12,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.4,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "B",
+      "move": "A3",
+      "move_number": 27,
+      "player": "Alice",
+      "winrate_after": 99.7,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "W",
+      "move": "A2",
+      "move_number": 28,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.3,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "B",
+      "move": "B2",
+      "move_number": 29,
+      "player": "Alice",
+      "winrate_after": 99.6,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "W",
+      "move": "C1",
+      "move_number": 30,
+      "player": "Bob",
+      "winrate_after": 0.2,
+      "winrate_before": 0.4,
+      "winrate_drop": 0.2
+    },
+    {
+      "color": "B",
+      "move": "A6",
+      "move_number": 15,
+      "player": "Alice",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "W",
+      "move": "A4",
+      "move_number": 16,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "B",
+      "move": "B4",
+      "move_number": 17,
+      "player": "Alice",
+      "winrate_after": 99.8,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "W",
+      "move": "C3",
+      "move_number": 18,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.2,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "W",
+      "move": "F2",
+      "move_number": 22,
+      "player": "Bob",
+      "winrate_after": 0.2,
+      "winrate_before": 0.2,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "B",
+      "move": "E2",
+      "move_number": 23,
+      "player": "Alice",
+      "winrate_after": 99.8,
+      "winrate_before": 99.8,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "W",
+      "move": "E1",
+      "move_number": 32,
+      "player": "Bob",
+      "winrate_after": 0.3,
+      "winrate_before": 0.4,
+      "winrate_drop": 0.1
+    },
+    {
+      "color": "B",
+      "move": "C6",
+      "move_number": 11,
+      "player": "Alice",
+      "winrate_after": 99.6,
+      "winrate_before": 99.6,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "B6",
+      "move_number": 13,
+      "player": "Alice",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "B5",
+      "move_number": 14,
+      "player": "Bob",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "E3",
+      "move_number": 19,
+      "player": "Alice",
+      "winrate_after": 99.8,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "F3",
+      "move_number": 20,
+      "player": "Bob",
+      "winrate_after": 0.2,
+      "winrate_before": 0.2,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "G3",
+      "move_number": 21,
+      "player": "Alice",
+      "winrate_after": 99.8,
+      "winrate_before": 99.8,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "D2",
+      "move_number": 24,
+      "player": "Bob",
+      "winrate_after": 0.2,
+      "winrate_before": 0.2,
+      "winrate_drop": 0.0
+    }
+  ],
+  "filename": "alice-vs-bob-9x9.sgf",
+  "game_id": "3a515943fbb3",
+  "generated_by": "katago",
+  "katago": {
+    "visits": 16,
+    "winrate_perspective": "black"
+  },
+  "summary": {
+    "biggest_winrate_loss": {
+      "color": "B",
+      "move": "G7",
+      "move_number": 5,
+      "player": "Alice",
+      "winrate_after": 48.9,
+      "winrate_before": 84.0,
+      "winrate_drop": 35.0
+    }
+  }
+}

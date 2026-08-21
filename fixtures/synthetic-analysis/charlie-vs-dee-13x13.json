@@ -1,0 +1,382 @@
+{
+  "events": [
+    {
+      "color": "W",
+      "move": "H6",
+      "move_number": 24,
+      "player": "Dee",
+      "winrate_after": 1.2,
+      "winrate_before": 97.2,
+      "winrate_drop": 96.0
+    },
+    {
+      "color": "B",
+      "move": "D5",
+      "move_number": 15,
+      "player": "Charlie",
+      "winrate_after": 0.4,
+      "winrate_before": 58.1,
+      "winrate_drop": 57.7
+    },
+    {
+      "color": "W",
+      "move": "L5",
+      "move_number": 14,
+      "player": "Dee",
+      "winrate_after": 41.9,
+      "winrate_before": 95.4,
+      "winrate_drop": 53.4
+    },
+    {
+      "color": "B",
+      "move": "F6",
+      "move_number": 9,
+      "player": "Charlie",
+      "winrate_after": 5.2,
+      "winrate_before": 58.5,
+      "winrate_drop": 53.3
+    },
+    {
+      "color": "W",
+      "move": "H8",
+      "move_number": 10,
+      "player": "Dee",
+      "winrate_after": 43.5,
+      "winrate_before": 94.8,
+      "winrate_drop": 51.3
+    },
+    {
+      "color": "B",
+      "move": "C5",
+      "move_number": 13,
+      "player": "Charlie",
+      "winrate_after": 4.6,
+      "winrate_before": 53.0,
+      "winrate_drop": 48.4
+    },
+    {
+      "color": "W",
+      "move": "G9",
+      "move_number": 8,
+      "player": "Dee",
+      "winrate_after": 41.5,
+      "winrate_before": 84.7,
+      "winrate_drop": 43.2
+    },
+    {
+      "color": "W",
+      "move": "J6",
+      "move_number": 26,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 42.1,
+      "winrate_drop": 41.9
+    },
+    {
+      "color": "B",
+      "move": "E7",
+      "move_number": 7,
+      "player": "Charlie",
+      "winrate_after": 15.3,
+      "winrate_before": 56.2,
+      "winrate_drop": 41.0
+    },
+    {
+      "color": "B",
+      "move": "E5",
+      "move_number": 17,
+      "player": "Charlie",
+      "winrate_after": 0.3,
+      "winrate_before": 41.2,
+      "winrate_drop": 40.9
+    },
+    {
+      "color": "B",
+      "move": "J3",
+      "move_number": 25,
+      "player": "Charlie",
+      "winrate_after": 57.9,
+      "winrate_before": 98.8,
+      "winrate_drop": 40.9
+    },
+    {
+      "color": "W",
+      "move": "K5",
+      "move_number": 16,
+      "player": "Dee",
+      "winrate_after": 58.8,
+      "winrate_before": 99.6,
+      "winrate_drop": 40.7
+    },
+    {
+      "color": "W",
+      "move": "G6",
+      "move_number": 22,
+      "player": "Dee",
+      "winrate_after": 80.0,
+      "winrate_before": 99.7,
+      "winrate_drop": 19.7
+    },
+    {
+      "color": "B",
+      "move": "H3",
+      "move_number": 23,
+      "player": "Charlie",
+      "winrate_after": 2.8,
+      "winrate_before": 20.0,
+      "winrate_drop": 17.2
+    },
+    {
+      "color": "B",
+      "move": "F7",
+      "move_number": 5,
+      "player": "Charlie",
+      "winrate_after": 45.4,
+      "winrate_before": 58.7,
+      "winrate_drop": 13.3
+    },
+    {
+      "color": "W",
+      "move": "G8",
+      "move_number": 6,
+      "player": "Dee",
+      "winrate_after": 43.8,
+      "winrate_before": 54.6,
+      "winrate_drop": 10.8
+    },
+    {
+      "color": "B",
+      "move": "C8",
+      "move_number": 11,
+      "player": "Charlie",
+      "winrate_after": 45.8,
+      "winrate_before": 56.5,
+      "winrate_drop": 10.7
+    },
+    {
+      "color": "W",
+      "move": "L6",
+      "move_number": 12,
+      "player": "Dee",
+      "winrate_after": 47.0,
+      "winrate_before": 54.2,
+      "winrate_drop": 7.3
+    },
+    {
+      "color": "B",
+      "move": "F5",
+      "move_number": 19,
+      "player": "Charlie",
+      "winrate_after": 0.2,
+      "winrate_before": 3.6,
+      "winrate_drop": 3.4
+    },
+    {
+      "color": "W",
+      "move": "J4",
+      "move_number": 18,
+      "player": "Dee",
+      "winrate_after": 96.4,
+      "winrate_before": 99.7,
+      "winrate_drop": 3.3
+    },
+    {
+      "color": "B",
+      "move": "D4",
+      "move_number": 3,
+      "player": "Charlie",
+      "winrate_after": 58.0,
+      "winrate_before": 58.8,
+      "winrate_drop": 0.8
+    },
+    {
+      "color": "W",
+      "move": "K10",
+      "move_number": 4,
+      "player": "Dee",
+      "winrate_after": 41.3,
+      "winrate_before": 42.0,
+      "winrate_drop": 0.6
+    },
+    {
+      "color": "W",
+      "move": "H5",
+      "move_number": 20,
+      "player": "Dee",
+      "winrate_after": 99.4,
+      "winrate_before": 99.8,
+      "winrate_drop": 0.4
+    },
+    {
+      "color": "W",
+      "move": "K6",
+      "move_number": 28,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.5,
+      "winrate_drop": 0.4
+    },
+    {
+      "color": "B",
+      "move": "G4",
+      "move_number": 21,
+      "player": "Charlie",
+      "winrate_after": 0.3,
+      "winrate_before": 0.6,
+      "winrate_drop": 0.3
+    },
+    {
+      "color": "B",
+      "move": "K3",
+      "move_number": 27,
+      "player": "Charlie",
+      "winrate_after": 99.5,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.3
+    },
+    {
+      "color": "B",
+      "move": "D10",
+      "move_number": 1,
+      "player": "Charlie",
+      "winrate_after": 59.0,
+      "winrate_before": 58.7,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "K4",
+      "move_number": 2,
+      "player": "Dee",
+      "winrate_after": 41.2,
+      "winrate_before": 41.0,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "L3",
+      "move_number": 29,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "L7",
+      "move_number": 30,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "M3",
+      "move_number": 31,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "M7",
+      "move_number": 32,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "N3",
+      "move_number": 33,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "N7",
+      "move_number": 34,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "N2",
+      "move_number": 35,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "N8",
+      "move_number": 36,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "M2",
+      "move_number": 37,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "M9",
+      "move_number": 38,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "B",
+      "move": "L2",
+      "move_number": 39,
+      "player": "Charlie",
+      "winrate_after": 99.9,
+      "winrate_before": 99.9,
+      "winrate_drop": 0.0
+    },
+    {
+      "color": "W",
+      "move": "L8",
+      "move_number": 40,
+      "player": "Dee",
+      "winrate_after": 0.1,
+      "winrate_before": 0.1,
+      "winrate_drop": 0.0
+    }
+  ],
+  "filename": "charlie-vs-dee-13x13.sgf",
+  "game_id": "0f4abd765a25",
+  "generated_by": "katago",
+  "katago": {
+    "visits": 16,
+    "winrate_perspective": "black"
+  },
+  "summary": {
+    "biggest_winrate_loss": {
+      "color": "W",
+      "move": "H6",
+      "move_number": 24,
+      "player": "Dee",
+      "winrate_after": 1.2,
+      "winrate_before": 97.2,
+      "winrate_drop": 96.0
+    }
+  }
+}

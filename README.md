@@ -34,11 +34,20 @@ output/site/index.html
 
 The scripts are incremental. If an SGF file has already been processed and its contents have not changed, it will not be duplicated.
 
+To calculate AI win-rate drops for that session, run:
+
+```bash
+python3 scripts/social_go.py analyze-katago games/real/2026-08-27 --date 2026-08-27 --label "27 Aug"
+```
+
+This writes one analysis JSON file per SGF under `analysis/`. The website uses those files for First Penguin.
+
 Synthetic SGFs live under `fixtures/synthetic-games/` and are not part of the real leaderboard workflow.
 
 To preview the site with synthetic data:
 
 ```bash
+python3 scripts/social_go.py analyze-sample-katago
 python3 scripts/social_go.py build-sample-site
 ```
 
@@ -106,7 +115,46 @@ Provisional awards may change until the edition is finalized.
 - 📸 Photo Finish Award: 20 points for the closest game
 - 🏃 Marathon Award: 10 points for the longest game processed so far, minimum 100 moves
 
-KataGo-based awards currently appear as pending in the awards section until analysis support is added.
+Awards that need analysis currently appear as pending until their metrics are supported. First Penguin can be calculated from saved analysis events.
+
+## Analysis Data
+
+First Penguin is calculated from saved analysis files. The `analyze-katago` command starts KataGo once, asks it to analyze every turn in each SGF, then records each player's win-rate loss after their own moves.
+
+```text
+analysis/
+  alice-vs-bob.json
+```
+
+The generated shape is:
+
+```json
+{
+  "generated_by": "katago",
+  "katago": {
+    "visits": 16,
+    "winrate_perspective": "black"
+  },
+  "summary": {
+    "biggest_winrate_loss": {
+      "move_number": 24,
+      "player": "Alice",
+      "winrate_drop": 47.0
+    }
+  },
+  "events": [
+    {
+      "move_number": 24,
+      "player": "Alice",
+      "winrate_before": 92.0,
+      "winrate_after": 45.0,
+      "winrate_drop": 47.0
+    }
+  ]
+}
+```
+
+First Penguin is awarded to the earliest player whose win rate drops by at least 40 percentage points in one move.
 
 ## Optional Game Metadata
 
