@@ -771,8 +771,8 @@ def render_site(data: dict[str, Any]) -> str:
     games = data["games"]
     awards = data["edition_awards"]
     awards_title = "Awards"
-    leader_rows = "\n".join(render_leader_row(i + 1, row, data["edition_status"]) for i, row in enumerate(rows))
-    game_rows = "\n".join(render_game_row(game) for game in games)
+    leader_rows = "\n".join(render_leader_row(i + 1, row, data) for i, row in enumerate(rows))
+    game_rows = "\n".join(render_game_row(game, data) for game in games)
     award_cards = "\n".join(render_award_card(award, data["edition_status"]) for award in awards)
 
     return f"""<!doctype html>
@@ -978,6 +978,11 @@ def render_site(data: dict[str, Any]) -> str:
       border: 1px solid rgba(31, 122, 93, .22);
       font-size: .9rem;
       line-height: 1;
+      text-decoration: none;
+    }}
+    .points-badge:hover {{
+      border-color: rgba(31, 122, 93, .42);
+      box-shadow: 0 8px 20px rgba(31, 122, 93, .12);
     }}
     .points-heading {{
       text-align: center;
@@ -1068,6 +1073,13 @@ def render_site(data: dict[str, Any]) -> str:
       color: var(--muted);
       line-height: 1.35;
     }}
+    .breakdown-list {{
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }}
     .breakdown-points {{
       white-space: nowrap;
     }}
@@ -1075,6 +1087,26 @@ def render_site(data: dict[str, Any]) -> str:
       color: var(--muted);
       font-size: .88rem;
       margin-top: 3px;
+    }}
+    .result-cell {{
+      display: grid;
+      gap: 6px;
+    }}
+    .result-badges {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .result-badge {{
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #e7f2eb;
+      border: 1px solid rgba(31, 122, 93, .22);
+      font-size: .9rem;
+      line-height: 1;
     }}
     .game-link {{
       color: inherit;
@@ -1322,8 +1354,8 @@ def render_site(data: dict[str, Any]) -> str:
         row.classList.remove("is-highlighted");
       }}, 2800);
     }}
-    document.querySelectorAll(".award[href^='#game-']").forEach((awardLink) => {{
-      awardLink.addEventListener("click", () => {{
+    document.querySelectorAll("a[href^='#game-']").forEach((gameLink) => {{
+      gameLink.addEventListener("click", () => {{
         window.setTimeout(highlightLinkedGame, 0);
       }});
     }});
@@ -1335,24 +1367,24 @@ def render_site(data: dict[str, Any]) -> str:
 """
 
 
-def render_leader_row(rank: int, row: dict[str, Any], edition_status: str) -> str:
+def render_leader_row(rank: int, row: dict[str, Any], data: dict[str, Any]) -> str:
     class_name = f' class="place-{rank}"' if rank in {1, 2} else ""
     return f"""<tr{class_name}>
   <td class="rank">{rank}</td>
   <td><strong>{escape(row["player"])}</strong></td>
   <td>
     <div class="score-cell">
-      {render_score(row)}
-      {render_breakdown(row, edition_status)}
+      {render_score(row, data)}
+      {render_breakdown(row, data)}
     </div>
   </td>
 </tr>"""
 
 
-def render_score(row: dict[str, Any]) -> str:
+def render_score(row: dict[str, Any], data: dict[str, Any]) -> str:
     provisional = row["award_points"]
     confirmed = row["total_points"] - provisional
-    first_penguin_badge = render_first_penguin_badge(row)
+    first_penguin_badge = render_first_penguin_badge(row, data)
     if provisional == 0:
         return f"""<span class="points">{row["total_points"]}</span>{first_penguin_badge}"""
     return f"""<span class="points points-formula">
@@ -1364,10 +1396,14 @@ def render_score(row: dict[str, Any]) -> str:
 </span>{first_penguin_badge}"""
 
 
-def render_first_penguin_badge(row: dict[str, Any]) -> str:
+def render_first_penguin_badge(row: dict[str, Any], data: dict[str, Any]) -> str:
     if "🐧 First Penguin" not in row["achievements"]:
         return ""
-    return """<span class="points-badge" title="First Penguin" aria-label="First Penguin">🐧</span>"""
+    first_penguin = data.get("first_penguin")
+    game_id = first_penguin.get("game_id") if isinstance(first_penguin, dict) else ""
+    if not game_id:
+        return """<span class="points-badge" title="First Penguin" aria-label="First Penguin">🐧</span>"""
+    return f"""<a class="points-badge" href="#game-{escape(game_id)}" title="First Penguin" aria-label="First Penguin">🐧</a>"""
 
 
 def rules_item(title: str, points: str, detail: str) -> str:
@@ -1380,28 +1416,24 @@ def rules_item(title: str, points: str, detail: str) -> str:
 </li>"""
 
 
-def render_breakdown(row: dict[str, Any], edition_status: str) -> str:
-    boards = len(row["board_sizes"])
-    sessions = len(row["sessions"])
-    formats = []
-    if "pair-go" in row["game_types"]:
-        formats.append("Pair Go")
+def render_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
+    edition_status = data["edition_status"]
     awards_title = "Final Awards" if edition_status == "final" else "Provisional Awards"
     awards = render_awards_breakdown(row["awards"], edition_status)
-    milestones = ", ".join(row["achievements"]) if row["achievements"] else "No milestones yet"
-    board_sizes = ", ".join(f"{size}x{size}" for size in row["board_sizes"]) or "No board sizes yet"
-    session_list = ", ".join(row["sessions"]) or "No sessions yet"
-    format_list = ", ".join(formats) if formats else "No formats yet"
+    milestones = render_milestones_breakdown(row, data)
+    board_sizes = breakdown_lines([f"{size}x{size}" for size in row["board_sizes"]], "No board sizes yet")
+    session_list = breakdown_lines(row["sessions"], "No sessions yet")
+    format_list = breakdown_lines(format_labels(row["game_types"]), "No formats yet")
     return f"""<details class="breakdown">
   <summary aria-label="Show points breakdown for {escape(row["player"])}">?</summary>
   <div class="breakdown-panel">
     <div class="breakdown-sections">
       <div class="breakdown-group">
         <div class="breakdown-group-title">Confirmed Points</div>
-        {breakdown_section("Sessions", escape(f"{sessions} session(s): {session_list}"), row["attendance_points"])}
-        {breakdown_section("Board sizes", escape(f"{boards} board size(s): {board_sizes}"), row["board_size_points"])}
-        {breakdown_section("Formats", escape(format_list), row["format_points"])}
-        {breakdown_section("Milestones", escape(milestones), row["achievement_points"])}
+        {breakdown_section("Sessions", session_list, row["attendance_points"])}
+        {breakdown_section("Board sizes", board_sizes, row["board_size_points"])}
+        {breakdown_section("Formats", format_list, row["format_points"])}
+        {breakdown_section("Milestones", milestones, row["achievement_points"])}
       </div>
       <div class="breakdown-group">
         <div class="breakdown-group-title">{awards_title}</div>
@@ -1416,9 +1448,38 @@ def render_awards_breakdown(awards: list[str], edition_status: str) -> str:
     if not awards:
         award_label = "final" if edition_status == "final" else "provisional"
         return escape(f"No {award_label} awards")
-    if edition_status == "final":
-        return escape(", ".join(awards))
-    return escape(", ".join(awards))
+    return breakdown_lines(awards, "")
+
+
+def render_milestones_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
+    if not row["achievements"]:
+        return "No milestones yet"
+    milestones = []
+    first_penguin = data.get("first_penguin")
+    for achievement in row["achievements"]:
+        if achievement == "🐧 First Penguin" and isinstance(first_penguin, dict):
+            drop = first_penguin.get("winrate_drop")
+            if drop is not None:
+                milestones.append(f"{achievement} ({drop} point drop)")
+                continue
+        milestones.append(achievement)
+    return breakdown_lines(milestones, "")
+
+
+def breakdown_lines(items: list[Any], empty_label: str) -> str:
+    values = [str(item) for item in items if str(item)]
+    if not values:
+        return escape(empty_label)
+    lines = "\n".join(f"<li>{escape(value)}</li>" for value in values)
+    return f"""<ul class="breakdown-list">{lines}</ul>"""
+
+
+def format_labels(game_types: list[str]) -> list[str]:
+    labels = {
+        "standard": "Standard",
+        "pair-go": "Pair Go",
+    }
+    return [labels.get(game_type, game_type) for game_type in game_types]
 
 
 def breakdown_section(title: str, detail: str, points: int, provisional: bool = False) -> str:
@@ -1432,17 +1493,40 @@ def breakdown_section(title: str, detail: str, points: int, provisional: bool = 
 </section>"""
 
 
-def render_game_row(game: dict[str, Any]) -> str:
+def render_game_row(game: dict[str, Any], data: dict[str, Any]) -> str:
     metadata = f"{game['board_size']}x{game['board_size']} / {game['move_count']} moves"
     if game["game_type"] != "standard":
         metadata = f"{metadata} / {game['game_type']}"
     sgf_href = escape(game["path"])
     game_title = f"{escape(game['black'])} vs {escape(game['white'])}"
+    result_badges = render_game_result_badges(game, data)
     return f"""<tr class="game-row" id="game-{escape(game["game_id"])}">
   <td>{escape(game["session_label"])}</td>
   <td><a class="game-link" href="{sgf_href}" download="{escape(game["filename"])}"><strong>{game_title}</strong></a><div class="sub">{escape(metadata)}</div></td>
-  <td>{escape(game["result"])}</td>
+  <td><div class="result-cell"><span>{escape(game["result"])}</span>{result_badges}</div></td>
 </tr>"""
+
+
+def render_game_result_badges(game: dict[str, Any], data: dict[str, Any]) -> str:
+    badges = []
+    first_penguin = data.get("first_penguin")
+    if isinstance(first_penguin, dict) and first_penguin.get("game_id") == game["game_id"]:
+        badges.append(("🐧", "First Penguin"))
+    for award in data.get("edition_awards", []):
+        if award.get("status") != "current" or award.get("target_game_id") != game["game_id"]:
+            continue
+        badges.append((award_icon(award["name"]), award["name"]))
+    if not badges:
+        return ""
+    badge_html = "".join(
+        f"""<span class="result-badge" title="{escape(title)}" aria-label="{escape(title)}">{escape(icon)}</span>"""
+        for icon, title in badges
+    )
+    return f"""<div class="result-badges">{badge_html}</div>"""
+
+
+def award_icon(name: str) -> str:
+    return str(name).split(" ", 1)[0]
 
 
 def render_award_card(award: dict[str, Any], edition_status: str) -> str:
