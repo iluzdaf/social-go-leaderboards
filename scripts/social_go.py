@@ -690,9 +690,9 @@ def rollercoaster_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict
     for game in games:
         swings = []
         for event in analysis_events_for_game(game, analysis_dir):
-            swing = winrate_swing_points(event)
-            if swing >= ROLLERCOASTER_MIN_SWING:
-                swings.append(swing)
+            drop = winrate_drop_points(event)
+            if drop >= ROLLERCOASTER_MIN_SWING:
+                swings.append(drop)
         swing_count = len(swings)
         if swing_count < ROLLERCOASTER_MIN_SWINGS:
             continue
@@ -742,12 +742,6 @@ def winrate_drop_points(event: dict[str, Any]) -> float:
     before = normalize_winrate_value(event.get("winrate_before", 0))
     after = normalize_winrate_value(event.get("winrate_after", 0))
     return max(0.0, before - after)
-
-
-def winrate_swing_points(event: dict[str, Any]) -> float:
-    before = normalize_winrate_value(event.get("winrate_before", 0))
-    after = normalize_winrate_value(event.get("winrate_after", 0))
-    return abs(before - after)
 
 
 def normalize_winrate_value(value: Any) -> float:
@@ -1362,7 +1356,7 @@ def render_site(data: dict[str, Any]) -> str:
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
             {rules_item("🧊 Iceberg", "20 pts", f"Biggest AI win-rate collapse of at least {int(ICEBERG_MIN_DROP)} percentage points.")}
             {rules_item("🧘 Zen Master", "20 pts", "Lowest average AI win-rate loss.")}
-            {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate swings, with at least {ROLLERCOASTER_MIN_SWINGS} swings of {int(ROLLERCOASTER_MIN_SWING)} percentage points or more.")}
+            {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate drops, with at least {ROLLERCOASTER_MIN_SWINGS} drops of {int(ROLLERCOASTER_MIN_SWING)} percentage points or more.")}
           </ul>
         </div>
       </div>
@@ -1504,9 +1498,24 @@ def render_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
     awards_title = "Final Awards" if edition_status == "final" else "Provisional Awards"
     awards = render_awards_breakdown(row["awards"], edition_status)
     milestones = render_milestones_breakdown(row, data)
-    board_sizes = breakdown_lines([f"{size}x{size}" for size in row["board_sizes"]], "No board sizes yet")
+    has_board_nomad = "🧭 Board Nomad" in row["achievements"]
+    has_go_explorer = "🗺️ Go Explorer" in row["achievements"]
+    board_size_items = [f"{size}x{size}" for size in row["board_sizes"]]
+    if has_board_nomad:
+        board_size_items.append("🧭 Board Nomad")
+    format_items = format_labels(row["game_types"])
+    if has_go_explorer:
+        format_items.append("🗺️ Go Explorer")
+    board_size_points = row["board_size_points"] + (30 if has_board_nomad else 0)
+    format_points = row["format_points"] + (30 if has_go_explorer else 0)
+    milestone_points = row["achievement_points"]
+    if has_board_nomad:
+        milestone_points -= 30
+    if has_go_explorer:
+        milestone_points -= 30
+    board_sizes = breakdown_lines(board_size_items, "No board sizes yet")
     session_list = breakdown_lines(row["sessions"], "No sessions yet")
-    format_list = breakdown_lines(format_labels(row["game_types"]), "No formats yet")
+    format_list = breakdown_lines(format_items, "No formats yet")
     return f"""<details class="breakdown">
   <summary aria-label="Show points breakdown for {escape(row["player"])}">?</summary>
   <div class="breakdown-panel">
@@ -1514,9 +1523,9 @@ def render_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
       <div class="breakdown-group">
         <div class="breakdown-group-title">Confirmed Points</div>
         {breakdown_section("Sessions", session_list, row["attendance_points"])}
-        {breakdown_section("Board sizes", board_sizes, row["board_size_points"])}
-        {breakdown_section("Formats", format_list, row["format_points"])}
-        {breakdown_section("Milestones", milestones, row["achievement_points"])}
+        {breakdown_section("Board sizes", board_sizes, board_size_points)}
+        {breakdown_section("Formats", format_list, format_points)}
+        {breakdown_section("Milestones", milestones, milestone_points)}
       </div>
       <div class="breakdown-group">
         <div class="breakdown-group-title">{awards_title}</div>
@@ -1535,17 +1544,19 @@ def render_awards_breakdown(awards: list[str], edition_status: str) -> str:
 
 
 def render_milestones_breakdown(row: dict[str, Any], data: dict[str, Any]) -> str:
-    if not row["achievements"]:
-        return "No milestones yet"
     milestones = []
     first_penguin = data.get("first_penguin")
     for achievement in row["achievements"]:
+        if achievement in {"🧭 Board Nomad", "🗺️ Go Explorer"}:
+            continue
         if achievement == "🐧 First Penguin" and isinstance(first_penguin, dict):
             drop = first_penguin.get("winrate_drop")
             if drop is not None:
                 milestones.append(f"{achievement} ({drop} point drop)")
                 continue
         milestones.append(achievement)
+    if not milestones:
+        return "No milestones yet"
     return breakdown_lines(milestones, "")
 
 
