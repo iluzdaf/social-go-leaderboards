@@ -111,15 +111,15 @@ Provisional awards may change until the edition is finalized.
 
 - 🧊 Iceberg Award: 20 points for the biggest AI win-rate collapse
 - 🧘 Zen Master Award: 20 points for the lowest average AI win-rate loss
-- 🎢 Rollercoaster Award: 20 points for the most AI win-rate swings
+- 🎢 Rollercoaster Award: 20 points for the most AI win-rate swings of at least 20 percentage points
 - 📸 Photo Finish Award: 20 points for the closest game
 - 🏃 Marathon Award: 10 points for the longest game processed so far, minimum 100 moves
 
-Awards that need analysis appear as pending until their metrics are supported. First Penguin, Iceberg, and Zen Master can be calculated from saved analysis events.
+Awards that need analysis appear as pending until their metrics are supported. First Penguin, Iceberg, Zen Master, and Rollercoaster can be calculated from saved analysis events.
 
 ## Analysis Data
 
-First Penguin, Iceberg, and Zen Master are calculated from saved analysis files. The `analyze-katago` command starts KataGo once, asks it to analyze every turn in each SGF, then records each player's win-rate loss after their own moves.
+First Penguin, Iceberg, Zen Master, and Rollercoaster are calculated from saved analysis files. The `analyze-katago` command starts KataGo once, asks it to analyze every turn in each SGF, then records each player's win-rate loss after their own moves.
 
 ```text
 analysis/
@@ -154,7 +154,7 @@ The generated shape is:
 }
 ```
 
-First Penguin is awarded to the earliest player whose win rate drops by at least 40 percentage points in one move. Iceberg is awarded to the player with the biggest single-move win-rate drop across all analyzed games. Zen Master is awarded to the player, or Pair Go side, with the lowest average win-rate loss in a single game.
+First Penguin is awarded to the earliest player whose win rate drops by at least 40 percentage points in one move. Iceberg is awarded to the player with the biggest single-move win-rate drop across all analyzed games. Zen Master is awarded to the player, or Pair Go side, with the lowest average win-rate loss in a single game. Rollercoaster is awarded to the players in the game with the most win-rate drops of at least 20 percentage points.
 
 ## Optional Game Metadata
 

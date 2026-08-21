@@ -36,6 +36,7 @@ SUPPORTED_GAME_TYPES = {"standard", "pair-go"}
 MARATHON_MIN_MOVES = 100
 FIRST_PENGUIN_MIN_DROP = 40.0
 FIRST_PENGUIN_POINTS = 20
+ROLLERCOASTER_MIN_SWING = 20.0
 EDITION_AWARDS = [
     {
         "key": "marathon",
@@ -553,6 +554,7 @@ def edition_awards(games: list[dict[str, Any]], analysis_dir: Path = ANALYSIS_DI
         "marathon": marathon_award(games),
         "iceberg": iceberg_award(games, analysis_dir),
         "zen_master": zen_master_award(games, analysis_dir),
+        "rollercoaster": rollercoaster_award(games, analysis_dir),
     }
     for award in EDITION_AWARDS:
         resolved = resolved_awards.get(award["key"])
@@ -654,6 +656,37 @@ def zen_master_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[st
     if not candidates:
         return None
     winner = min(candidates, key=lambda candidate: candidate["sort_key"])
+    winner.pop("sort_key", None)
+    return winner
+
+
+def rollercoaster_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, Any] | None:
+    candidates = []
+    game_order = {game["game_id"]: index for index, game in enumerate(games)}
+    for game in games:
+        swings = []
+        for event in analysis_events_for_game(game, analysis_dir):
+            drop = winrate_drop_points(event)
+            if drop >= ROLLERCOASTER_MIN_SWING:
+                swings.append(drop)
+        if not swings:
+            continue
+        swing_count = len(swings)
+        swing_total = sum(swings)
+        swing_label = "swing" if swing_count == 1 else "swings"
+        candidates.append(
+            {
+                "detail": f"{swing_count} {swing_label}",
+                "recipients": game_players(game),
+                "target_game_id": game["game_id"],
+                "swing_count": swing_count,
+                "swing_total": round(swing_total, 1),
+                "sort_key": (swing_count, swing_total, -game_order[game["game_id"]]),
+            }
+        )
+    if not candidates:
+        return None
+    winner = max(candidates, key=lambda candidate: candidate["sort_key"])
     winner.pop("sort_key", None)
     return winner
 
@@ -1277,7 +1310,7 @@ def render_site(data: dict[str, Any]) -> str:
           <ul class="rules-list">
             {rules_item("🧊 Iceberg", "20 pts", "Biggest AI win-rate collapse.")}
             {rules_item("🧘 Zen Master", "20 pts", "Lowest average AI win-rate loss.")}
-            {rules_item("🎢 Rollercoaster", "20 pts", "Most AI win-rate swings.")}
+            {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate drops of at least {int(ROLLERCOASTER_MIN_SWING)} percentage points.")}
             {rules_item("📸 Photo Finish", "20 pts", "Closest game.")}
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
           </ul>
