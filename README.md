@@ -23,6 +23,7 @@ python3 scripts/social_go.py process games/real/2026-08-27 --date 2026-08-27 --l
 3. Rebuild the website:
 
 ```bash
+npm run build:assets
 python3 scripts/social_go.py build-site
 ```
 
@@ -48,6 +49,7 @@ To preview the site with synthetic data:
 
 ```bash
 python3 scripts/social_go.py analyze-sample-katago
+npm run build:assets
 python3 scripts/social_go.py build-sample-site
 ```
 

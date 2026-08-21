@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 OUTPUT_DIR = ROOT / "output"
 SITE_DIR = OUTPUT_DIR / "site"
+ASSETS_DIR = ROOT / "assets"
 GAMES_JSON = DATA_DIR / "games.json"
 LEADERBOARD_JSON = DATA_DIR / "leaderboard.json"
 METADATA_CSV = DATA_DIR / "game_metadata.csv"
@@ -182,27 +183,45 @@ def parse_sgf(path: Path, session_date: str, session_label: str, metadata: dict[
     )
 
 
-def parse_sgf_moves(path: Path, board_size: int) -> list[dict[str, str]]:
+def parse_sgf_moves(path: Path, board_size: int) -> list[dict[str, Any]]:
     text = path.read_text(encoding="utf-8", errors="replace")
     moves = []
-    for match in re.finditer(r";([BW])\[([a-zA-Z]{0,2})\]", text):
+    for move_number, match in enumerate(re.finditer(r";([BW])\[([a-zA-Z]{0,2})\]", text), start=1):
         color = match.group(1)
         sgf_point = match.group(2).lower()
-        moves.append({"color": color, "point": sgf_point_to_gtp(sgf_point, board_size)})
+        vertex = sgf_point_to_vertex(sgf_point, board_size)
+        moves.append(
+            {
+                "moveNumber": move_number,
+                "color": color,
+                "point": sgf_point_to_gtp(sgf_point, board_size),
+                "pass": vertex is None,
+                "x": vertex[0] if vertex else None,
+                "y": vertex[1] if vertex else None,
+            }
+        )
     return moves
 
 
 def sgf_point_to_gtp(point: str, board_size: int) -> str:
-    if point == "" or point.lower() == "tt":
+    vertex = sgf_point_to_vertex(point, board_size)
+    if vertex is None:
         return "pass"
+    x, y = vertex
+    columns = "ABCDEFGHJKLMNOPQRST"
+    return f"{columns[x]}{board_size - y}"
+
+
+def sgf_point_to_vertex(point: str, board_size: int) -> tuple[int, int] | None:
+    if point == "" or point.lower() == "tt":
+        return None
     if len(point) != 2:
         raise ValueError(f"Unsupported SGF point: {point}")
     x = ord(point[0]) - ord("a")
     y = ord(point[1]) - ord("a")
     if x < 0 or y < 0 or x >= board_size or y >= board_size:
         raise ValueError(f"SGF point {point} is outside a {board_size}x{board_size} board")
-    columns = "ABCDEFGHJKLMNOPQRST"
-    return f"{columns[x]}{board_size - y}"
+    return (x, y)
 
 
 def process_session(args: argparse.Namespace) -> None:
@@ -398,7 +417,7 @@ def engine_visits(engine: KataGoAnalysisEngine) -> int:
 
 def winrate_drop_events(
     game: dict[str, Any],
-    moves: list[dict[str, str]],
+    moves: list[dict[str, Any]],
     winrates_by_turn: dict[int, float],
 ) -> list[dict[str, Any]]:
     events = []
@@ -749,18 +768,20 @@ def build_site(_: argparse.Namespace) -> None:
     games = load_json(GAMES_JSON, [])
     data = build_leaderboard_data(games)
     write_json(LEADERBOARD_JSON, data)
-    write_site(data)
+    write_site(data, ANALYSIS_DIR)
 
 
 def build_sample_site(_: argparse.Namespace) -> None:
     games = load_synthetic_games()
     data = build_leaderboard_data(games, SYNTHETIC_ANALYSIS_DIR)
-    write_site(data)
+    write_site(data, SYNTHETIC_ANALYSIS_DIR)
 
 
-def write_site(data: dict[str, Any]) -> None:
+def write_site(data: dict[str, Any], analysis_dir: Path = ANALYSIS_DIR) -> None:
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     copy_site_games(data["games"])
+    copy_site_assets()
+    write_game_pages(data, analysis_dir)
     (SITE_DIR / "index.html").write_text(render_site(data), encoding="utf-8")
     print(f"Built {str((SITE_DIR / 'index.html').relative_to(ROOT))}.")
 
@@ -798,6 +819,25 @@ def copy_site_games(games: list[dict[str, Any]]) -> None:
         target = SITE_DIR / game["path"]
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+
+
+def copy_site_assets() -> None:
+    target_dir = SITE_DIR / "assets"
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
+    if not ASSETS_DIR.exists():
+        return
+    shutil.copytree(ASSETS_DIR, target_dir)
+
+
+def write_game_pages(data: dict[str, Any], analysis_dir: Path) -> None:
+    pages_dir = SITE_DIR / "game"
+    if pages_dir.exists():
+        shutil.rmtree(pages_dir)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    for game in data["games"]:
+        page_path = pages_dir / f"{game['game_id']}.html"
+        page_path.write_text(render_game_analysis_page(game, data, analysis_dir), encoding="utf-8")
 
 
 def render_site(data: dict[str, Any]) -> str:
@@ -1526,16 +1566,394 @@ def breakdown_section(title: str, detail: str, points: int, provisional: bool = 
 </section>"""
 
 
+def render_game_analysis_page(game: dict[str, Any], data: dict[str, Any], analysis_dir: Path) -> str:
+    title = f"{game['black']} vs {game['white']}"
+    metadata = [
+        game["session_label"],
+        f"{game['board_size']}x{game['board_size']}",
+        f"{game['move_count']} moves",
+    ]
+    if game["game_type"] != "standard":
+        metadata.append(str(game["game_type"]))
+    metadata_rows = "\n".join(f"<span>{escape(item)}</span>" for item in metadata)
+    metadata_rows += f"\n<span>Result: {escape(game['result'] or 'Unknown')}</span>"
+    events = sorted(
+        analysis_events_for_game(game, analysis_dir),
+        key=lambda event: int(event.get("move_number", 0) or 0),
+    )
+    review_data = game_review_data(game, data, analysis_dir, events)
+    award_checks = render_game_award_checks(game, data)
+    analysis_rows = "\n".join(render_analysis_event_row(event) for event in events)
+    if not analysis_rows:
+        analysis_rows = '<tr><td colspan="5">No analysis data available for this game yet.</td></tr>'
+    sgf_href = escape(f"../{game['path']}")
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escape(title)} - Social Go at Kembangan</title>
+  <link rel="stylesheet" href="../assets/game-review.css">
+  <style>
+    :root {{
+      color-scheme: light;
+      --bg: #f7f4ee;
+      --ink: #1d2522;
+      --muted: #65706b;
+      --line: #ddd6c9;
+      --panel: #fffdf8;
+      --accent: #1f7a5d;
+      --accent-2: #c85f32;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #e7f2eb 0, transparent 30rem), var(--bg);
+      color: var(--ink);
+    }}
+    main {{
+      width: min(960px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }}
+    a {{ color: inherit; }}
+    .back {{
+      color: var(--accent);
+      font-weight: 800;
+      text-decoration: none;
+    }}
+    header {{
+      display: grid;
+      gap: 12px;
+      padding: 28px 0 24px;
+      border-bottom: 1px solid var(--line);
+    }}
+    h1 {{
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }}
+    .meta, .sub {{
+      color: var(--muted);
+      line-height: 1.45;
+    }}
+    .meta {{
+      display: grid;
+      gap: 2px;
+    }}
+    .actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }}
+    .button {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 0 13px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      text-decoration: none;
+      font-weight: 800;
+    }}
+    .button-primary {{
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+    }}
+    .panel {{
+      margin-top: 18px;
+      background: color-mix(in srgb, var(--panel) 92%, white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 50px rgba(43, 35, 22, .08);
+      overflow: hidden;
+    }}
+    .panel h2 {{
+      margin: 0;
+      padding: 16px 18px;
+      font-size: 1.05rem;
+      border-bottom: 1px solid var(--line);
+    }}
+    .panel-body {{ padding: 16px 18px; }}
+    .review-layout {{
+      display: grid;
+      grid-template-columns: minmax(0, auto) minmax(260px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }}
+    .board-panel {{
+      display: grid;
+      gap: 12px;
+    }}
+    .board-shell {{
+      display: grid;
+      justify-content: center;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }}
+    .move-controls {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }}
+    .move-controls button {{
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      font-weight: 800;
+      cursor: pointer;
+    }}
+    .move-controls button:disabled {{
+      color: var(--muted);
+      cursor: not-allowed;
+    }}
+    .selected-analysis {{
+      min-height: 42px;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.35;
+    }}
+    .selected-analysis strong {{
+      color: var(--ink);
+    }}
+    .graph-panel {{
+      min-width: 0;
+    }}
+    .graph-title {{
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: .88rem;
+    }}
+    .winrate-graph svg {{
+      width: 100%;
+      height: auto;
+      min-height: 170px;
+      overflow: visible;
+    }}
+    .graph-axis {{
+      stroke: var(--line);
+      stroke-width: 2;
+    }}
+    .graph-line {{
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }}
+    .graph-hit {{
+      fill: transparent;
+      cursor: pointer;
+    }}
+    .graph-hit:hover {{
+      fill: rgba(31, 122, 93, .16);
+    }}
+    .graph-selected {{
+      fill: var(--accent-2);
+      stroke: white;
+      stroke-width: 2;
+    }}
+    .analysis-row {{
+      cursor: pointer;
+    }}
+    .analysis-row:hover td {{
+      background: #e7f2eb;
+    }}
+    .checks {{
+      display: grid;
+      gap: 10px;
+    }}
+    .check {{
+      display: grid;
+      gap: 3px;
+      padding: 12px;
+      border-left: 4px solid var(--accent);
+      border-radius: 4px;
+      background: #e7f2eb;
+    }}
+    .check-title {{
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 800;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+    th, td {{
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }}
+    th {{
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }}
+    tr:last-child td {{ border-bottom: 0; }}
+    .drop {{
+      color: var(--accent-2);
+      font-weight: 900;
+      white-space: nowrap;
+    }}
+    @media (max-width: 700px) {{
+      main {{ width: min(100% - 20px, 960px); padding-top: 16px; }}
+      .review-layout {{ grid-template-columns: 1fr; }}
+      th, td {{ padding: 10px 9px; }}
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="../index.html#game-{escape(game["game_id"])}">Back to leaderboard</a>
+    <header>
+      <h1>{escape(title)}</h1>
+      <div class="meta">{metadata_rows}</div>
+      <div class="actions">
+        <a class="button button-primary" href="{sgf_href}" download="{escape(game["filename"])}">Download SGF</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>Award</h2>
+      <div class="panel-body">
+        {award_checks}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Board Review</h2>
+      <div class="panel-body">
+        <div id="game-review-board"><p class="sub">Build the game review assets to show the interactive board.</p></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Analysis</h2>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Move</th><th>Notation</th><th>Player</th><th>Before</th><th>After</th><th>Drop</th></tr></thead>
+          <tbody>{analysis_rows}</tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script id="game-review-data" type="application/json">{escape_json_script(review_data)}</script>
+  <script src="../assets/game-review.js"></script>
+</body>
+</html>
+"""
+
+
+def render_game_award_checks(game: dict[str, Any], data: dict[str, Any]) -> str:
+    checks = []
+    first_penguin = data.get("first_penguin")
+    if isinstance(first_penguin, dict) and first_penguin.get("game_id") == game["game_id"]:
+        checks.append(
+            (
+                "🐧 First Penguin",
+                first_penguin.get("recipient", ""),
+                f"Move {first_penguin.get('move_number')} / {first_penguin.get('winrate_drop')} point drop",
+            )
+        )
+    for award in data.get("edition_awards", []):
+        if award.get("status") != "current" or award.get("target_game_id") != game["game_id"]:
+            continue
+        checks.append((award["name"], ", ".join(award["recipients"]), award.get("detail", "")))
+    if not checks:
+        return '<p class="sub">No awards are currently attached to this game.</p>'
+    items = "\n".join(
+        f"""<div class="check">
+  <div class="check-title"><span>{escape(name)}</span><strong>{escape(holder)}</strong></div>
+  <div class="sub">{escape(detail)}</div>
+</div>"""
+        for name, holder, detail in checks
+    )
+    return f"""<div class="checks">{items}</div>"""
+
+
+def game_review_data(
+    game: dict[str, Any],
+    data: dict[str, Any],
+    analysis_dir: Path,
+    events: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "boardSize": game["board_size"],
+        "initialMove": initial_review_move(game, data, events),
+        "moves": parse_sgf_moves(ROOT / game["path"], game["board_size"]),
+        "events": events,
+    }
+
+
+def initial_review_move(game: dict[str, Any], data: dict[str, Any], events: list[dict[str, Any]]) -> int:
+    first_penguin = data.get("first_penguin")
+    if isinstance(first_penguin, dict) and first_penguin.get("game_id") == game["game_id"]:
+        return int(first_penguin.get("move_number", 0) or 0)
+    award_moves = [
+        int(event.get("move_number", 0) or 0)
+        for event in events
+        if winrate_drop_points(event) == max((winrate_drop_points(candidate) for candidate in events), default=0)
+    ]
+    return award_moves[0] if award_moves else min(game["move_count"], 1)
+
+
+def render_analysis_event_row(event: dict[str, Any]) -> str:
+    move_number = escape(event.get("move_number", ""))
+    return f"""<tr class="analysis-row" data-move-number="{move_number}">
+  <td>{move_number}</td>
+  <td>{escape(event.get("move", ""))}</td>
+  <td>{escape(event.get("player", ""))}</td>
+  <td>{format_analysis_number(event.get("winrate_before"))}</td>
+  <td>{format_analysis_number(event.get("winrate_after"))}</td>
+  <td class="drop">{format_analysis_number(event.get("winrate_drop"))}</td>
+</tr>"""
+
+
+def format_analysis_number(value: Any) -> str:
+    try:
+        return escape(f"{float(value):.1f}")
+    except (TypeError, ValueError):
+        return ""
+
+
+def escape_json_script(data: Any) -> str:
+    return (
+        json.dumps(data, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+
+
 def render_game_row(game: dict[str, Any], data: dict[str, Any]) -> str:
     metadata = f"{game['board_size']}x{game['board_size']} / {game['move_count']} moves"
     if game["game_type"] != "standard":
         metadata = f"{metadata} / {game['game_type']}"
-    sgf_href = escape(game["path"])
+    game_href = escape(f"game/{game['game_id']}.html")
     game_title = f"{escape(game['black'])} vs {escape(game['white'])}"
     result_badges = render_game_result_badges(game, data)
     return f"""<tr class="game-row" id="game-{escape(game["game_id"])}">
   <td>{escape(game["session_label"])}</td>
-  <td><a class="game-link" href="{sgf_href}" download="{escape(game["filename"])}"><strong>{game_title}</strong></a><div class="sub">{escape(metadata)}</div></td>
+  <td><a class="game-link" href="{game_href}"><strong>{game_title}</strong></a><div class="sub">{escape(metadata)}</div></td>
   <td><div class="result-cell"><span>{escape(game["result"])}</span>{result_badges}</div></td>
 </tr>"""
 

@@ -1,0 +1,16 @@
+{
+  "name": "social-go-leaderboards",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:assets": "esbuild src/game-review.js --bundle --outdir=assets --format=iife --loader:.png=dataurl --loader:.svg=dataurl"
+  },
+  "dependencies": {
+    "@sabaki/go-board": "^1.4.3",
+    "@sabaki/shudan": "^1.7.1",
+    "preact": "^10.29.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}
