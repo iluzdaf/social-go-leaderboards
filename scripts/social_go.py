@@ -31,6 +31,8 @@ SYNTHETIC_ANALYSIS_DIR = FIXTURES_DIR / "synthetic-analysis"
 SYNTHETIC_METADATA_CSV = FIXTURES_DIR / "synthetic-game_metadata.csv"
 DEFAULT_KATAGO_CONFIG = Path("/opt/homebrew/Cellar/katago/1.16.4/share/katago/configs/analysis_example.cfg")
 DEFAULT_KATAGO_MODEL = Path("/opt/homebrew/Cellar/katago/1.16.4/share/katago/g170e-b20c256x2-s5303129600-d1228401921.bin.gz")
+GOATCOUNTER_SCRIPT = """<script data-goatcounter="https://social-go-kembangan.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>"""
 
 SUPPORTED_BOARD_SIZES = {9, 13, 19}
 SUPPORTED_GAME_TYPES = {"standard", "pair-go"}
@@ -1325,6 +1327,7 @@ def render_site(data: dict[str, Any]) -> str:
       .score-cell {{ justify-content: center; }}
     }}
   </style>
+  {GOATCOUNTER_SCRIPT}
 </head>
 <body>
   <main>
@@ -1841,6 +1844,7 @@ def render_game_analysis_page(game: dict[str, Any], data: dict[str, Any], analys
       th, td {{ padding: 10px 9px; }}
     }}
   </style>
+  {GOATCOUNTER_SCRIPT}
 </head>
 <body>
   <main>
