@@ -66,13 +66,14 @@ EDITION_AWARDS = [
         "source": "katago",
         "pending": "Pending analysis",
     },
-    {
-        "key": "photo_finish",
-        "name": "📸 Photo Finish",
-        "points": 20,
-        "source": "katago",
-        "pending": "Pending analysis",
-    },
+    # Photo Finish needs point-loss analysis from KataGo, so it is disabled for now.
+    # {
+    #     "key": "photo_finish",
+    #     "name": "📸 Photo Finish",
+    #     "points": 20,
+    #     "source": "katago",
+    #     "pending": "Pending analysis",
+    # },
 ]
 
 
@@ -1308,11 +1309,10 @@ def render_site(data: dict[str, Any]) -> str:
           <h3>Provisional Awards</h3>
           <p>These may change until the edition is finalized.</p>
           <ul class="rules-list">
+            {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
             {rules_item("🧊 Iceberg", "20 pts", "Biggest AI win-rate collapse.")}
             {rules_item("🧘 Zen Master", "20 pts", "Lowest average AI win-rate loss.")}
             {rules_item("🎢 Rollercoaster", "20 pts", f"Most AI win-rate drops of at least {int(ROLLERCOASTER_MIN_SWING)} percentage points.")}
-            {rules_item("📸 Photo Finish", "20 pts", "Closest game.")}
-            {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
           </ul>
         </div>
       </div>

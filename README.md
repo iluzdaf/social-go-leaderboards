@@ -112,7 +112,6 @@ Provisional awards may change until the edition is finalized.
 - 🧊 Iceberg Award: 20 points for the biggest AI win-rate collapse
 - 🧘 Zen Master Award: 20 points for the lowest average AI win-rate loss
 - 🎢 Rollercoaster Award: 20 points for the most AI win-rate swings of at least 20 percentage points
-- 📸 Photo Finish Award: 20 points for the closest game
 - 🏃 Marathon Award: 10 points for the longest game processed so far, minimum 100 moves
 
 Awards that need analysis appear as pending until their metrics are supported. First Penguin, Iceberg, Zen Master, and Rollercoaster can be calculated from saved analysis events.
