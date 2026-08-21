@@ -845,6 +845,12 @@ def render_site(data: dict[str, Any]) -> str:
     games = data["games"]
     awards = data["edition_awards"]
     awards_title = "Awards"
+    award_rules_title = "Final Awards" if data["edition_status"] == "final" else "Provisional Awards"
+    award_rules_detail = (
+        "These are final for this edition."
+        if data["edition_status"] == "final"
+        else "These may change until the edition is finalized."
+    )
     leader_rows = "\n".join(render_leader_row(i + 1, row, data) for i, row in enumerate(rows))
     game_rows = "\n".join(render_game_row(game, data) for game in games)
     award_cards = "\n".join(render_award_card(award, data["edition_status"]) for award in awards)
@@ -1346,8 +1352,8 @@ def render_site(data: dict[str, Any]) -> str:
           </ul>
         </div>
         <div class="rules-group">
-          <h3>Provisional Awards</h3>
-          <p>These may change until the edition is finalized.</p>
+          <h3>{award_rules_title}</h3>
+          <p>{award_rules_detail}</p>
           <ul class="rules-list">
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
             {rules_item("🧊 Iceberg", "20 pts", "Biggest AI win-rate collapse.")}
@@ -1458,7 +1464,7 @@ def render_score(row: dict[str, Any], data: dict[str, Any]) -> str:
     provisional = row["award_points"]
     confirmed = row["total_points"] - provisional
     first_penguin_badge = render_first_penguin_badge(row, data)
-    if provisional == 0:
+    if provisional == 0 or data["edition_status"] == "final":
         return f"""<span class="points">{row["total_points"]}</span>{first_penguin_badge}"""
     return f"""<span class="points points-formula">
   <span class="points-confirmed">{confirmed}</span>
@@ -1982,20 +1988,27 @@ def award_icon(name: str) -> str:
 
 def render_award_card(award: dict[str, Any], edition_status: str) -> str:
     class_name = "award award-pending" if award["status"] == "pending" else "award"
-    status_label = "Final" if edition_status == "final" else "Currently"
+    status_label = "" if edition_status == "final" else "Currently"
     if award["status"] == "pending":
-        status_label = "Pending"
+        status_label = "Not awarded" if edition_status == "final" else "Pending"
     points_class = "award-points"
     if award["status"] != "pending" and edition_status != "final":
         points_class = "award-points points-provisional"
     recipients = ", ".join(award["recipients"])
     if recipients and award.get("detail"):
-        detail = f"""{escape(f"{status_label}: {recipients}")}
+        winner_text = f"{status_label}: {recipients}" if status_label else recipients
+        detail = f"""{escape(winner_text)}
     <span class="award-detail">{escape(award["detail"])}</span>"""
     elif recipients:
-        detail = escape(f"{status_label}: {recipients}")
+        winner_text = f"{status_label}: {recipients}" if status_label else recipients
+        detail = escape(winner_text)
     else:
-        detail = escape(award["detail"])
+        detail_text = str(award["detail"])
+        if award["status"] == "pending" and edition_status == "final":
+            detail_text = detail_text.removeprefix("Pending: ").removeprefix("Pending ")
+            detail = escape(f"{status_label}: {detail_text}")
+        else:
+            detail = escape(detail_text)
     tag = "a" if award.get("target_game_id") else "div"
     href = f' href="#game-{escape(award["target_game_id"])}"' if award.get("target_game_id") else ""
     return f"""<{tag} class="{class_name}"{href}>
