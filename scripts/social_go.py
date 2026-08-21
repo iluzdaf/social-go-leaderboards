@@ -609,7 +609,7 @@ def iceberg_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[str, 
                 continue
             candidates.append(
                 {
-                    "detail": f"{game['black']} vs {game['white']} / {round(drop, 1)} point drop",
+                    "detail": f"{round(drop, 1)} point drop",
                     "recipients": award_recipients(recipient),
                     "target_game_id": game["game_id"],
                     "move_number": int(event.get("move_number", 0) or 0),
@@ -643,7 +643,7 @@ def zen_master_award(games: list[dict[str, Any]], analysis_dir: Path) -> dict[st
             average_loss = row["loss_total"] / row["moves_analyzed"]
             candidates.append(
                 {
-                    "detail": f"{side} / {round(average_loss, 1)} avg loss",
+                    "detail": f"{round(average_loss, 1)} avg loss",
                     "recipients": award_recipients(side),
                     "target_game_id": game["game_id"],
                     "average_loss": round(average_loss, 1),
@@ -705,7 +705,7 @@ def marathon_award(games: list[dict[str, Any]]) -> dict[str, Any] | None:
     if not marathon:
         return None
     return {
-        "detail": f"{marathon['black']} vs {marathon['white']} / {marathon['move_count']} moves",
+        "detail": f"{marathon['move_count']} moves",
         "recipients": game_players(marathon),
         "target_game_id": marathon["game_id"],
     }
@@ -1148,6 +1148,9 @@ def render_site(data: dict[str, Any]) -> str:
       font-size: .86rem;
       line-height: 1.35;
     }}
+    .award-detail {{
+      display: block;
+    }}
     .rules-content {{
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1451,7 +1454,13 @@ def render_award_card(award: dict[str, Any], edition_status: str) -> str:
     if award["status"] != "pending" and edition_status != "final":
         points_class = "award-points points-provisional"
     recipients = ", ".join(award["recipients"])
-    detail = f"{status_label}: {recipients}" if recipients else award["detail"]
+    if recipients and award.get("detail"):
+        detail = f"""{escape(f"{status_label}: {recipients}")}
+    <span class="award-detail">{escape(award["detail"])}</span>"""
+    elif recipients:
+        detail = escape(f"{status_label}: {recipients}")
+    else:
+        detail = escape(award["detail"])
     tag = "a" if award.get("target_game_id") else "div"
     href = f' href="#game-{escape(award["target_game_id"])}"' if award.get("target_game_id") else ""
     return f"""<{tag} class="{class_name}"{href}>
@@ -1459,7 +1468,7 @@ def render_award_card(award: dict[str, Any], edition_status: str) -> str:
     <span>{escape(award["name"])}</span>
     <strong class="{points_class}">+{award["points"]} pts</strong>
   </div>
-  <span class="award-meta">{escape(detail)}</span>
+  <span class="award-meta">{detail}</span>
 </{tag}>"""
 
 
