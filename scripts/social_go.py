@@ -855,12 +855,6 @@ def render_site(data: dict[str, Any]) -> str:
     games = data["games"]
     awards = data["edition_awards"]
     awards_title = "Awards"
-    award_rules_title = "Final Awards" if data["edition_status"] == "final" else "Provisional Awards"
-    award_rules_detail = (
-        "These are final for this edition."
-        if data["edition_status"] == "final"
-        else "These may change until the edition is finalized."
-    )
     leader_rows = "\n".join(render_leader_row(i + 1, row, data) for i, row in enumerate(rows))
     game_rows = "\n".join(render_game_row(game, data) for game in games)
     award_cards = "\n".join(render_award_card(award, data["edition_status"]) for award in awards)
@@ -1362,8 +1356,8 @@ def render_site(data: dict[str, Any]) -> str:
           </ul>
         </div>
         <div class="rules-group">
-          <h3>{award_rules_title}</h3>
-          <p>{award_rules_detail}</p>
+          <h3>Provisional Awards</h3>
+          <p>These may change until the edition is finalized.</p>
           <ul class="rules-list">
             {rules_item("🏃 Marathon", "10 pts", f"Longest game of at least {MARATHON_MIN_MOVES} moves.")}
             {rules_item("🧊 Iceberg", "20 pts", f"Biggest AI win-rate collapse of at least {int(ICEBERG_MIN_DROP)} percentage points.")}
