@@ -1401,6 +1401,7 @@ def render_site(data: dict[str, Any]) -> str:
       <div class="section-body privacy-content">
         <p>Games submitted for the leaderboard may be published on this site, and SGF files may be downloadable.</p>
         <p>Please avoid including personal information in SGF comments, filenames, player names, or metadata. Use your preferred display name if you do not want your full name shown.</p>
+        <p>This site uses GoatCounter for simple visitor counts, such as page views and referrers. It does not use cookies or track visitors across websites.</p>
         <p>If you want a game corrected, renamed, or removed, contact the organiser.</p>
       </div>
     </details>
